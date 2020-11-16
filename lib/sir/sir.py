@@ -8,13 +8,18 @@ from pandas import DataFrame
 class SIRController(object):
     """
     本类用于完成SIR模拟并返回结果
-    简单调用流程如下
 
-    G = nx.Graph()
-    controller = SIRController(G)
-    controller.configure_sir(infection_list,infection_rate,recover_rate)
-    result = controller.run(times)
+    Simple example
+    --------------
+
+    >>> import networkx as nx
+    >>> G = nx.Graph()
+    >>> ......
+    >>> controller = SIRController(G)
+    >>> controller.configure_sir(infection_list,infection_rate,recover_rate)
+    >>> result = controller.run(times)
     """
+
     def __init__(self, graph):
         """
         :param graph: networkx的Graph实例

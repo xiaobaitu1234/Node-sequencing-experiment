@@ -1,1 +1,1 @@
-from lib.sir.sir import SIRController
+from .sir import SIRController
