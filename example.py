@@ -8,13 +8,8 @@ def load_graph():
 
     :return: graph
     """
-    path = r'D:\GitHub\SIR\样本数据\CA-HepTh-edge.csv'
-    with open(path) as f:
-        data = f.readlines()[1:-1]
-        data = (x.replace('\n', '') for x in data)
-        data = (x.split(',') for x in data)
-    g = nx.Graph()
-    g.add_edges_from(data)
+    path = r'D:\GitHub\Node-sequencing-experiment\样本数据\CA-HepTh.edgelist'
+    g = nx.read_edgelist(path)
     return g
 
 
@@ -30,22 +25,19 @@ def main(infection_rate, recover_rate, simulate_times):
     :return: dataframe
     """
     graph = load_graph()
-    infection_list = [
-        '71788',
-        '8168',
-        '33111',
-        '17284',
-        '40942',
-        '31512',
-        '75297',
-        '36663',
-        '66142',
-        '30344',
-    ]
+    # 选取度值做传播实验
+    degree = nx.degree(graph)
+    items = list(degree)
+    items.sort(key=lambda x: x[1],reverse=True)
+    # 排序选取度值前10个
+    infection_list = map(lambda x:x[0],items[0:10])
+    # 计算为列表
+    infection_list = list(infection_list)
+
     sir_controller = SIRController(graph)  # 处理图的信息
     sir_controller.configure_sir(infection_list, infection_rate, recover_rate)
     print(sir_controller.run(simulate_times))
 
 
 if __name__ == '__main__':
-    main(0.1, 1, 10)
+    main(0.09, 1, 10)
