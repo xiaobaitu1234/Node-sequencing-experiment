@@ -1,3 +1,23 @@
+"""
+本文件用于计算补充实验的数据
+
+
+通过每次迭代删除指定特征值最大的前1%节点，并计算剩余的数值完成
+
+特征值可选
+types = {
+'degree': 'D', # 度值
+'betweenesscentrality': 'B', # 介数中心性
+'eigencentrality': 'E', # 特征向量中心性
+'closnesscentrality': 'C', # 紧密中心性
+}
+
+剩余数值包括，每次迭代删除后的 连通子图数量W(G-S)，最大子图的节点数M(G-S)，删除节点数S
+
+"""
+
+
+
 from __future__ import annotations
 from itertools import product
 
@@ -185,7 +205,7 @@ def batch_remove():
     for file, delete_type in product(file_map.keys(), types):
         print("%s ---- %s" % (file, delete_type))  # 打印当前文件及类型
         graph = load_graph(file)  # 载入图数据
-        print("{} 图数据加载完成")
+        print("{} 图数据加载完成".format(file))
         rt = remove(graph, delete_type)  # 删除节点并获取删除序列
         """将删除序列构建dataframe，并输出csv文件"""
         df = pd.DataFrame(rt)
