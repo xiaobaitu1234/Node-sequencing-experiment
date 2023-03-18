@@ -1,7 +1,14 @@
+
+"""
+执行SIR模拟
+
+通过numba jit 实现，速度会快一些
+"""
+
 import networkx as nx
-from numba import njit
+from numba import jit
 from random import uniform
-from numba.typed import List
+from numba.typed import List as nbList
 from pandas import DataFrame
 
 
@@ -24,9 +31,9 @@ class SIRController(object):
         """
         :param graph: networkx的Graph实例
         """
-        self._graph = nx.Graph(graph)
-        self._name_index_dict = None  # 存储节点名称编码字典
-        self._edge_list = None  # 存储编码后的边列表
+        self._graph: nx.Graph = nx.Graph(graph)
+        self._name_index_dict: dict = None  # 存储节点名称编码字典
+        self._edge_list: list = None  # 存储编码后的边列表
         self._init()  # 初始化编码字典，边列表
         self.node_num = len(graph.nodes)  # 节点数
 
@@ -41,7 +48,7 @@ class SIRController(object):
         g = self._graph
         self._name_index_dict = dict(zip(g.nodes, range(len(g.nodes))))  # 构造字典
         encoding_dict = self._name_index_dict
-        self._edge_list = (
+        self._edge_list = list(
             (encoding_dict[x],
              encoding_dict[y]) for x,
             y in g.edges())  # 对边进行编码
@@ -49,14 +56,16 @@ class SIRController(object):
     def _nodes_encoding(self, infection_list):
         """
         对输入的感染节点进行编码，用于后续调用传播
+
         :return:
         """
         encoding_dict = self._name_index_dict
-        return (encoding_dict[x] for x in infection_list)
+        return list(encoding_dict[x] for x in infection_list)
 
     def configure_sir(self, infection_list, infection_rate, recover_rate):
         """
         配置SIR模拟
+
         :param infection_list: 初始传播源
         :param infection_rate: 感染率
         :param recover_rate: 恢复率
@@ -76,8 +85,12 @@ class SIRController(object):
             raise RuntimeError(
                 "Please run configure_sir method first or check if correctly configured")
         # 将输入参数构造为numba可以接受的列表形式
-        typed_infection_list = List(self._infection_list)
-        typed_edge_list = List(self._edge_list)
+        typed_infection_list = nbList()
+        for item in self._infection_list:
+            typed_infection_list.append(item)
+        typed_edge_list = nbList()
+        for item in self._edge_list:
+            typed_edge_list.append(item)
         # 构造参数字典
         params_dict = {
             'node_nums': self.node_num,
@@ -91,7 +104,7 @@ class SIRController(object):
         return DataFrame.from_records(rt, columns=column)  # 将结果构建为Dataframe并返回
 
 
-@njit
+@jit(forceobj=True, nopython=False)
 def sir_simulate(node_nums, infection_list, edges,
                  infect_rate, recover_rate=1, simulate_times=100):
     """
@@ -112,7 +125,8 @@ def sir_simulate(node_nums, infection_list, edges,
         status_dict: 各节点状态字典
         matrix: 邻接矩阵
     """
-    backup_i = List(infection_list)  # 拷贝初始感染节点
+    backup_i = infection_list.copy()  # 拷贝初始感染节点
+
     num_s, num_i, num_r = node_nums - \
         len(backup_i), len(backup_i), 0  # 记录每个状态的节点的数量
     # 初始化状态字典，用于快速判断每个节点的状态
@@ -142,7 +156,7 @@ def sir_simulate(node_nums, infection_list, edges,
             由于邻接矩阵不会变动，因此无需处理
         """
         time_num_s, time_num_i, time_num_r = num_s, num_i, num_r  # 拷贝计数器
-        time_backup_i = List(backup_i)  # 拷贝感染列表
+        time_backup_i = backup_i.copy()  # 拷贝感染列表
         time_status_dict = {}  # 拷贝状态字典
         for key in status_dict:
             time_status_dict[key] = status_dict[key]
@@ -151,8 +165,8 @@ def sir_simulate(node_nums, infection_list, edges,
         simulate_result_list.append(
             [time, step_counter, time_num_s, time_num_i, time_num_r])  # 记录初始状态
         while time_num_i != 0:  # 直到没有感染节点，停止模拟
-            for infect in List(
-                    time_backup_i):  # 对所有感染节点遍历，(拷贝感染列表，使执行时修改感染列表时不影响当前时间步的执行)
+            for infect in time_backup_i.copy(
+            ):  # 对所有感染节点遍历，(拷贝感染列表，使执行时修改感染列表时不影响当前时间步的执行)
                 for nbr in matrix[infect]:  # 遍历当前感染节点的邻居
                     if time_status_dict[nbr] == label_s:  # 如果该邻居为可感染状态，则进行判定
                         p = uniform(0, 1)
