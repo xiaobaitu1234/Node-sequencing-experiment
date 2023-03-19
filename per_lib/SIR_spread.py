@@ -8,16 +8,22 @@
 
 
 """
-import copy
+
 import csv
 import os
-import random
+import sys
 import time
 from collections import defaultdict
-from multiprocessing import Manager, Pool
+from itertools import count
 
 import networkx as nx
 import pandas as pd
+
+from lib.sir.sir import SIRController
+
+sys.path.append('../')
+
+verbose = True  # 是否显示详情
 
 
 def read_graph(edge_list_path: str):
@@ -232,31 +238,41 @@ def setAttr(graph):
 
     test = FeatureCalculate(graph.copy())
     # 为graph的每个节点设置pagerak
-    pagerank = nx.pagerank(graph)
-    for node in graph.nodes:
-        graph.nodes[node][PAGERANKS] = pagerank[node]
+    # pagerank = nx.pagerank(graph)
+    # for node in graph.nodes:
+    #     graph.nodes[node][PAGERANKS] = pagerank[node]
+    # if verbose:
+    #     print("pagerank finish")
 
     # 为graph的每个节点设置介数中心性
     betweenness_dict = nx.betweenness_centrality(graph)
     for node in graph.nodes:
         graph.nodes[node][BETWEENNESS] = betweenness_dict[node]
+    if verbose:
+        print("betweenesscentrality finish")
 
     # 为graph的每个节点添加degree值
     degrees = graph.degree
     for node in graph.nodes:
         graph.nodes[node][DEGREE] = degrees[node]
+    if verbose:
+        print("degree finish")
 
     # 为graph的每个节点添加k_shell值
     k_shell_set = test.k_shell_degree()
     for key in k_shell_set.keys():
         for item in k_shell_set[key]:
             graph.nodes[item][KSHELL] = key
+    if verbose:
+        print("k_shell_level finish")
 
     # 为graph的每个节点添加shell值
     k_shell_set = test.k_shell_self()
     for key in k_shell_set.keys():
         for item in k_shell_set[key]:
             graph.nodes[item][ASHELL] = key
+    if verbose:
+        print("ait_shell_level finish")
 
 
 def write_csv(graph, output_path):
@@ -311,100 +327,13 @@ def get_data(file_path):
     return ret
 
 
-def run_sir(m: "节点的邻居列表", Infect_index: "infection list",
-            A: "nodes_index", recover, infection):
-    # 输入邻接矩阵，感染列表，以及所有节点的下标，感染率和恢复率，输出最终感染结点数
-    # 先定义三种节点
-    # 可被感染的节点
-    S = []
-    # 已经被感染的节点
-    I = Infect_index[:]
-    # 已经痊愈的节点
-    R = []
-    # 初始化S,除了I就全是S,R初始化时为0
-    for i in A:
-        if i in Infect_index:
-            continue
-        S.append(i)
-
-    # 计步器(时间步)
-    count = 0
-    while True:
-        # 遍历感染者人群去传染未感染者
-        tempI = copy.copy(I)
-        for infect in tempI:
-            # 遍历当前感染者的邻居
-            for nbr in m[infect]:
-                # 如果当前感染者的邻居是感染者或者是恢复者,继续循环
-                if nbr in S:
-                    # 有一定的概率被传染并不一定会被传染
-                    p = random.uniform(0, 1)
-                    if p < infection:
-                        I.append(nbr)
-                        S.remove(nbr)
-            # 感染者人群也会有一定的概率痊愈
-            q = random.uniform(0, 1)
-            if q < recover:
-                I.remove(infect)
-                R.append(infect)
-        count += 1
-
-        if len(I) == 0:
-            break
-    return len(R) + len(I)
-
-
-def init_data(G):
-    # 初始化数据并执行
-    # 总节点数N
-    N = len(G.nodes())
-    # 构造邻接矩阵
-    m = [[] for _ in range(N)]
-
-    # A是所有的节点,无重复
-    A = list(G.nodes)
-    # A_index是所有节点的索引
-    A_index = list(range(N))
-    # 构造节点与邻接矩阵下标映射
-    for i in range(N):
-        G.nodes[A[i]]["index"] = A_index[i]
-
-    # 构造所有节点的邻居列表
-    for node in A:
-        # 获取节点的索引
-        index1 = G.nodes[node]["index"]
-        # 获取node的邻居节点
-        for nbr in G.neighbors(node):
-            index2 = G.nodes[nbr]["index"]
-            m[index1].append(index2)
-
-    return A_index, A, m
-
-# 处理每个结点的平均传播范围
-
-
-def task_node(q, node_index, m, A_index, recover, infection, times):
-    count_list = []
-    for _ in range(times):
-        count_list.append(
-            run_sir(
-                m,
-                [node_index],
-                A_index,
-                recover,
-                infection))
-    # 计数列表自增
-    q.put(node_index)
-    # 输出当前执行结点个数
-    print("this is the %d in %d" % (q.qsize(), len(A_index)))
-    return node_index, sum(count_list) / times
-
-
 if __name__ == "__main__":
 
     root = os.path.abspath(os.path.dirname(__file__))  # 获取文件路径
     root_path = os.path.join(root, "传递样本")
-    names = ["jazz"]
+    names = [
+        "actors",
+    ]
 
     irate_dic = {"CA-AstroPh": 0.02,
                  "CA-CondMat": 0.05,
@@ -412,6 +341,7 @@ if __name__ == "__main__":
                  "CA-HepTh": 0.09,
                  "CA-HepPh": 0.01,
                  "jazz": 0.03,
+                 'actors': 0.03,
                  "netscience": 0.15}
     # 平均传播范围的标签
     Label = "Mi"
@@ -424,50 +354,31 @@ if __name__ == "__main__":
     cpu_start = time.clock()
 
     for name in names:
+        infection = irate_dic[name]  # 传染率
+        recover = 1  # 恢复率
 
-        # 传染率
-        infection = irate_dic[name]
-        # 回复率
-        recover = 1
-        # 图的存储路径
-        path = os.path.join(root_path, name + ".edgelist")
+        path = os.path.join(root_path, name + ".edgelist")  # 图的存储路径
         node_path = os.path.join(root_path, name + ".csv")
-        calculate_graph_features(path, node_path)
+        if not os.path.exists(node_path):
+            calculate_graph_features(path, node_path)
 
         # 读取图
         G = read_graph(path)
-        # 处理数据，构造指定格式数据
-        A_index, A, m = init_data(G)
-        # 对每个节点进行测试
-        """
-        开启多进程,设置计数器counter
-        """
-        q = Manager().Queue(len(A_index))
-        processes = 1
-        # 生成参数列表
-        data_list = []
-        for node_index in A_index:
-            data_list.append(
-                (q, node_index, m, A_index, recover, infection, times))
-        # 开启多进程
-        pool = Pool(processes=processes)
-        # map分配进程
-        res = pool.starmap(task_node, data_list)
-        # 收集结果
-        pool.close()
-        pool.join()
-        """
-        关闭多进程
-        """
-        # 统计结果
-        for node_index, average_spread in res:
-            G.nodes[A[node_index]][Label] = average_spread
-            # print(node_index,"节点，平均传播为",str(average_spread))
-        """
-        收集结果完成
-        """
-        # 添加之前记录的属性
 
+        cnt = count(start=0, step=1)
+        node_nums = len(G)
+        for node in G:
+            controller = SIRController(G)
+            controller.configure_sir([node], infection, recover)
+            result = controller.run(times)
+            result["spread"] = result['i'] + result['r']
+            sum_of_max = result.groupby('times')['spread'].agg('max').sum()
+            G.nodes[node][Label] = sum_of_max / times
+            print(
+                "this is the {} of {} in {}".format(
+                    next(cnt), node_nums, name))
+
+        # 添加之前记录的属性
         rt = get_data(node_path)
         title, data = rt["title"], rt["data"]
         for line in data:
