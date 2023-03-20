@@ -331,6 +331,7 @@ if __name__ == "__main__":
 
     root = os.path.abspath(os.path.dirname(__file__))  # 获取文件路径
     root_path = os.path.join(root, "传递样本")
+    # 保证这里与传染率字典一致，否则找不到传染率，会报错。并且输入的图要求为edgelist格式，需要手动处理
     names = [
         "actors",
     ]
@@ -341,10 +342,13 @@ if __name__ == "__main__":
                  "CA-HepTh": 0.09,
                  "CA-HepPh": 0.01,
                  "jazz": 0.03,
-                 'actors': 0.03,
-                 "netscience": 0.15}
+                 'actors': 0.01,
+                 "Wiki-Vote": 0.01,
+                 "musae_FR_edges": 0.01,
+                 "netscience": 0.15,
+                 }
     # 平均传播范围的标签
-    Label = "Mi"
+    average_spread_label = "Mi"
     # 执行次数
     times = 100
 
@@ -358,35 +362,36 @@ if __name__ == "__main__":
         recover = 1  # 恢复率
 
         path = os.path.join(root_path, name + ".edgelist")  # 图的存储路径
-        node_path = os.path.join(root_path, name + ".csv")
+        node_path = os.path.join(root_path, name + ".csv")  # 点的特征值输出路径
         if not os.path.exists(node_path):
             calculate_graph_features(path, node_path)
-
+        # break
         # 读取图
-        G = read_graph(path)
+        cal_graph = read_graph(path)
 
-        cnt = count(start=0, step=1)
-        node_nums = len(G)
-        for node in G:
-            controller = SIRController(G)
+        cnt = count(start=0, step=1)  # 记录当前处理到第几个节点
+        node_nums = len(cal_graph)
+        for node in cal_graph:
+            controller = SIRController(cal_graph)
             controller.configure_sir([node], infection, recover)
             result = controller.run(times)
+            # 用于计算平均传播范围
             result["spread"] = result['i'] + result['r']
             sum_of_max = result.groupby('times')['spread'].agg('max').sum()
-            G.nodes[node][Label] = sum_of_max / times
+            cal_graph.nodes[node][average_spread_label] = sum_of_max / times
             print(
                 "this is the {} of {} in {}".format(
                     next(cnt), node_nums, name))
 
         # 添加之前记录的属性
-        rt = get_data(node_path)
-        title, data = rt["title"], rt["data"]
+        features = get_data(node_path)
+        title, data = features["title"], features["data"]
         for line in data:
             node = line[1]
             for index in range(2, len(line)):
-                G.nodes[node][title[index]] = line[index]
-        # 写回文件
-        write_csv(G, os.path.join(root_path, name + "_result.csv"))
+                cal_graph.nodes[node][title[index]] = line[index]
+        # 写回文件, 如果不担心出意外，可以直接写回原文件
+        write_csv(cal_graph, os.path.join(root_path, name + "_result.csv"))
     """
         计时结束
     """
