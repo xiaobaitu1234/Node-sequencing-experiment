@@ -42,8 +42,11 @@ file_names = [
     # 'CA-GrQc',
     # 'CA-HepTh',
     # 'CA-HepPh',
-    'jazz',
+    # 'jazz',
     # 'netscience',
+    "actors",
+    "Wiki-Vote",
+    "musae_FR_edges",
 ]
 
 
@@ -77,7 +80,12 @@ def read_gml(path):
 remove_rate_list = [0.01 * x for x in range(1, 101)]
 
 
-types = ["degree", "k_shell_level", "ait_shell_level", "random"]
+types = [
+    "degree",
+    "k_shell_level",
+    "ait_shell_level",
+    "random",
+    "betweenesscentrality"]
 type_trans_dic = {
     "degree": 'DC',
     "betweenesscentrality": 'BC',
@@ -120,6 +128,7 @@ for name in file_names:
 
         process_data.reset_index(drop=True, inplace=True)  # index重排序保证后续获取多行正确
 
+        ln_process_data = len(process_data)
         for remove_rate in remove_rate_list:  # 读取待删除数目，以获得待删除数据项
             if remove_rate == 1:
                 result = {"type": type_trans_dic[sort_type],
@@ -136,7 +145,7 @@ for name in file_names:
                 continue
 
             # 计算待删除结点数目
-            remove_num = int(len(process_data) * remove_rate)
+            remove_num = int(ln_process_data * remove_rate)
             # 获取待删除结点列表
             need_remove = process_data.loc[:remove_num - 1, label]
             # 拷贝原图
