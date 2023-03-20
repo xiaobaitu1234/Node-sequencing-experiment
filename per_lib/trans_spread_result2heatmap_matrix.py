@@ -1,6 +1,8 @@
 """
 
-处理传播结果
+处理传播结果, 将原始数据（根据SIR_spread计算得到的结果），处理为热力图矩阵数据。
+
+中间涉及创建文件夹，等分。等分是因为出图太难用肉眼看，所以要处理一下
 
 """
 
@@ -133,6 +135,16 @@ def av_matrix(filenames):
 
 
 if __name__ == "__main__":
-    file_names = ['CA-AstroPh', 'CA-CondMat', 'CA-GrQc', 'CA-HepTh', 'CA-HepPh', 'jazz', 'netscience',
-                  'jazz_result']  # 需要处理的文件名
+    file_names = [
+        'Actors',
+        'AstroPh',
+        'CondMat',
+        'GrQc',
+        'HepPh',
+        'HepTh',
+        'Jazz',
+        'Musae-FR',
+        'NetScience',
+        'Wiki-Vote',
+    ]  # 需要处理的文件名，要保证文件类型都是csv，且是SIR_spread的处理结果
     av_matrix(file_names)
