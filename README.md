@@ -10,3 +10,5 @@
     - 使用传递样本中的edgelist文件，计算每个节点的多种特征值，并对每个节点求平均传播范围
   - trans_spread_result2heatmap_matrix
     - 将SIR的传播结果，构造为热力图的矩阵数据。后续可以通过matlab等工具绘制
+- drawHeatMap.m
+  - matlab源文件，用于绘制热力图（matlab2020a）
