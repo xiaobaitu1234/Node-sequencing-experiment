@@ -346,6 +346,18 @@ if __name__ == "__main__":
                  "Wiki-Vote": 0.01,
                  "musae_FR_edges": 0.01,
                  "netscience": 0.15,
+                 'Musae-DE': 0.01,
+                 'Musae-ENGB': 0.01,
+                 'Musae-ES': 0.01,
+                 'Musae-PTBR': 0.01,
+                 'Musae-RU': 0.01,
+                 "football": 0.01,
+                 'convote': 0.05,
+                 "crime": 0,
+                 "movielens": 0,
+                 'filmtrust': 0,
+                 'filmtrust-trust': 0,
+                 'opsahl-ucforum': 0,
                  }
     # 平均传播范围的标签
     average_spread_label = "Mi"
